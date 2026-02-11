@@ -1,0 +1,102 @@
+
+export const BIOME_COLORS: Record<number, { name: string, color: string }> = {
+    0: { name: "Ocean", color: "#000070" },
+    1: { name: "Plains", color: "#8db360" },
+    2: { name: "Desert", color: "#fa9418" },
+    3: { name: "Windswept Hills", color: "#606060" },
+    4: { name: "Forest", color: "#056621" },
+    5: { name: "Taiga", color: "#0b6659" },
+    6: { name: "Swamp", color: "#07f9b2" },
+    7: { name: "River", color: "#0000ff" },
+    8: { name: "Nether Wastes", color: "#572526" },
+    9: { name: "The End", color: "#808040" },
+    10: { name: "Frozen Ocean", color: "#7070d6" },
+    11: { name: "Frozen River", color: "#a0a0ff" },
+    12: { name: "Snowy Plains", color: "#ffffff" },
+    13: { name: "Snowy Mountains", color: "#a0a0a0" },
+    14: { name: "Mushroom Fields", color: "#ff00ff" },
+    15: { name: "Mushroom Field Shore", color: "#a400a4" },
+    16: { name: "Beach", color: "#fade55" },
+    17: { name: "Desert Hills", color: "#d25f12" },
+    18: { name: "Wooded Hills", color: "#22551c" },
+    19: { name: "Taiga Hills", color: "#163933" },
+    20: { name: "Mountain Edge", color: "#727272" },
+    21: { name: "Jungle", color: "#537b09" },
+    22: { name: "Jungle Hills", color: "#2c4205" },
+    23: { name: "Sparse Jungle", color: "#628b17" },
+    24: { name: "Deep Ocean", color: "#000030" },
+    25: { name: "Stony Shore", color: "#a2a284" },
+    26: { name: "Snowy Beach", color: "#faf0c0" },
+    27: { name: "Birch Forest", color: "#307444" },
+    28: { name: "Birch Forest Hills", color: "#1f5f32" },
+    29: { name: "Dark Forest", color: "#40511a" },
+    30: { name: "Snowy Taiga", color: "#31554a" },
+    31: { name: "Snowy Taiga Hills", color: "#243a34" },
+    32: { name: "Old Growth Pine Taiga", color: "#596651" },
+    33: { name: "Old Growth Pine Taiga Hills", color: "#50543e" },
+    34: { name: "Windswept Forest", color: "#507050" },
+    35: { name: "Savanna", color: "#bdb25f" },
+    36: { name: "Savanna Plateau", color: "#a79d64" },
+    37: { name: "Badlands", color: "#d94515" },
+    38: { name: "Wooded Badlands", color: "#b09765" },
+    39: { name: "Badlands Plateau", color: "#ca8c65" },
+    40: { name: "Small End Islands", color: "#404020" },
+    41: { name: "End Midlands", color: "#808040" },
+    42: { name: "End Highlands", color: "#c0c080" },
+    43: { name: "End Barrens", color: "#808040" },
+    44: { name: "Warm Ocean", color: "#0000a0" },
+    45: { name: "Lukewarm Ocean", color: "#000090" },
+    46: { name: "Cold Ocean", color: "#202070" },
+    47: { name: "Deep Warm Ocean", color: "#000050" },
+    48: { name: "Deep Lukewarm Ocean", color: "#000040" },
+    49: { name: "Deep Cold Ocean", color: "#20203a" },
+    50: { name: "Deep Frozen Ocean", color: "#404090" },
+    168: { name: "Dripstone Caves", color: "#382210" },
+    169: { name: "Lush Caves", color: "#3b4407" },
+    170: { name: "Deep Dark", color: "#081010" },
+    174: { name: "Meadow", color: "#60a060" },
+    175: { name: "Grove", color: "#305030" },
+    176: { name: "Snowy Slopes", color: "#d0d0d0" },
+    177: { name: "Jagged Peaks", color: "#f0f0f0" },
+    178: { name: "Frozen Peaks", color: "#e0e0e0" },
+    179: { name: "Stony Peaks", color: "#a0a0a0" },
+};
+
+export const STRUCTURE_INFO: Record<string, { name: string, icon: string, color: string, dimensions: string[] }> = {
+    "village": { name: "Village", icon: "🏘️", color: "#facc15", dimensions: ["overworld"] },
+    "stronghold": { name: "Stronghold", icon: "💎", color: "#a855f7", dimensions: ["overworld"] },
+    "desert_pyramid": { name: "Desert Pyramid", icon: "🏜️", color: "#fb923c", dimensions: ["overworld"] },
+    "jungle_temple": { name: "Jungle Temple", icon: "🌿", color: "#4ade80", dimensions: ["overworld"] },
+    "swamp_hut": { name: "Swamp Hut", icon: "🧹", color: "#2dd4bf", dimensions: ["overworld"] },
+    "igloo": { name: "Igloo", icon: "🧊", color: "#e2e8f0", dimensions: ["overworld"] },
+    "ocean_ruin": { name: "Ocean Ruin", icon: "🔱", color: "#38bdf8", dimensions: ["overworld"] },
+    "shipwreck": { name: "Shipwreck", icon: "🚢", color: "#94a3b8", dimensions: ["overworld"] },
+    "monument": { name: "Ocean Monument", icon: "🏛️", color: "#22d3ee", dimensions: ["overworld"] },
+    "mansion": { name: "Woodland Mansion", icon: "🏰", color: "#78350f", dimensions: ["overworld"] },
+    "outpost": { name: "Pillager Outpost", icon: "🚩", color: "#ef4444", dimensions: ["overworld"] },
+    "ruined_portal": { name: "Ruined Portal", icon: "🔥", color: "#c026d3", dimensions: ["overworld", "nether"] },
+    "ancient_city": { name: "Ancient City", icon: "💀", color: "#0f172a", dimensions: ["overworld"] },
+    "treasure": { name: "Buried Treasure", icon: "💰", color: "#fbbf24", dimensions: ["overworld"] },
+    "fortress": { name: "Nether Fortress", icon: "🧱", color: "#b91c1c", dimensions: ["nether"] },
+    "bastion": { name: "Bastion Remnant", icon: "🐷", color: "#1e293b", dimensions: ["nether"] },
+    "end_city": { name: "End City", icon: "🏯", color: "#d946ef", dimensions: ["end"] },
+    "trail_ruins": { name: "Trail Ruins", icon: "🏺", color: "#d4d4d8", dimensions: ["overworld"] },
+    "trial_chambers": { name: "Trial Chambers", icon: "⚔️", color: "#fb923c", dimensions: ["overworld"] },
+};
+
+export function getBiomeColor(id: number): string {
+    return BIOME_COLORS[id]?.color || "#000000";
+}
+
+export function getBiomeName(id: number): string {
+    return BIOME_COLORS[id]?.name || "Unknown";
+}
+
+export function hexToRgb(hex: string): [number, number, number] {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? [
+        parseInt(result[1], 16),
+        parseInt(result[2], 16),
+        parseInt(result[3], 16)
+    ] : [0, 0, 0];
+}

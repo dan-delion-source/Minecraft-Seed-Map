@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "cd lib/cubiomes && make && cd ../../cubiomes_cli && make && cd .. && next build",
     "start": "next start",
     "lint": "next lint"
   },

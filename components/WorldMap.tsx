@@ -49,25 +49,29 @@ export default function WorldMap({ seed, version, dimension, structureToggles }:
     const [isDragging, setIsDragging] = useState(false);
     const [dimensions, setDimensions] = useState({ width: 800, height: 450 });
 
+    const [selectedStructure, setSelectedStructure] = useState<Structure | null>(null);
+
     // Reset cache on seed, version, or dimension change
     useEffect(() => {
         tileCache.clear();
         setStructures([]);
+        setSelectedStructure(null);
         fetchStructures();
     }, [seed, version, dimension]);
 
-    // Handle resize
+    // Handle resize with ResizeObserver
     useEffect(() => {
         if (!containerRef.current) return;
-        const updateSize = () => {
-            setDimensions({
-                width: containerRef.current!.clientWidth,
-                height: containerRef.current!.clientHeight
-            });
-        };
-        updateSize();
-        window.addEventListener("resize", updateSize);
-        return () => window.removeEventListener("resize", updateSize);
+
+        const observer = new ResizeObserver((entries) => {
+            for (const entry of entries) {
+                const { width, height } = entry.contentRect;
+                setDimensions({ width, height });
+            }
+        });
+
+        observer.observe(containerRef.current);
+        return () => observer.disconnect();
     }, []);
 
     const fetchStructures = useCallback(async () => {
@@ -164,7 +168,7 @@ export default function WorldMap({ seed, version, dimension, structureToggles }:
 
                     if (!tile) {
                         fetchTile(tx, tz);
-                    } else if (tile.loaded) {
+                    } else if (tile.loaded && structureToggles['biomes'] !== false) {
                         // Draw tile with transform
                         const drawX = centerX + (tx * TILE_SIZE_BLOCKS - viewport.x) * viewport.zoom;
                         const drawZ = centerY + (tz * TILE_SIZE_BLOCKS - viewport.z) * viewport.zoom;
@@ -176,35 +180,56 @@ export default function WorldMap({ seed, version, dimension, structureToggles }:
             }
 
             // 2. Draw Structure Markers
-            structures.forEach(s => {
+            // First pass: Draw unselected structures
+            // Second pass: Draw selected structure on top
+            const structuresToDraw = [...structures].sort((a, b) => {
+                if (a === selectedStructure) return 1;
+                if (b === selectedStructure) return -1;
+                return 0;
+            });
+
+            structuresToDraw.forEach(s => {
                 if (!structureToggles[s.type]) return;
 
                 const info = STRUCTURE_INFO[s.type];
                 if (!info) return;
 
-                // Clip to viewport
-                if (s.x < visibleLeft || s.x > visibleRight || s.z < visibleTop || s.z > visibleBottom) return;
+                // Clip to viewport (loosely)
+                if (s.x < visibleLeft - 100 || s.x > visibleRight + 100 || s.z < visibleTop - 100 || s.z > visibleBottom + 100) return;
 
                 const drawX = centerX + (s.x - viewport.x) * viewport.zoom;
                 const drawZ = centerY + (s.z - viewport.z) * viewport.zoom;
 
-                // Draw pin/icon
-                ctx.fillStyle = info.color;
+                const isSelected = selectedStructure === s;
+                let size = Math.max(6, 12 * Math.min(1, viewport.zoom * 2));
 
-                const size = Math.max(6, 12 * Math.min(1, viewport.zoom * 2));
+                if (isSelected) {
+                    size *= 1.5;
+                    // Draw selection ring/pulse
+                    ctx.beginPath();
+                    ctx.arc(drawX, drawZ, size * 1.3, 0, Math.PI * 2);
+                    ctx.strokeStyle = "white";
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+                    ctx.fill();
+                }
 
+                // Draw pin/icon background
                 ctx.beginPath();
                 ctx.arc(drawX, drawZ, size, 0, Math.PI * 2);
+                ctx.fillStyle = info.color;
                 ctx.fill();
                 ctx.strokeStyle = "white";
                 ctx.lineWidth = 1.5;
                 ctx.stroke();
 
-                // Icon text (only if zoomed in enough)
-                if (viewport.zoom > 0.05) {
+                // Icon text (only if zoomed in enough or selected)
+                if (viewport.zoom > 0.05 || isSelected) {
                     ctx.font = `${size}px sans-serif`;
                     ctx.textAlign = "center";
                     ctx.textBaseline = "middle";
+                    ctx.fillStyle = "white";
                     ctx.fillText(info.icon, drawX, drawZ);
                 }
             });
@@ -214,14 +239,49 @@ export default function WorldMap({ seed, version, dimension, structureToggles }:
 
         render();
         return () => cancelAnimationFrame(animationFrameId);
-    }, [viewport, tileCache, structures, structureToggles, dimensions, fetchTile]);
+    }, [viewport, tileCache, structures, structureToggles, dimensions, fetchTile, selectedStructure]);
 
     // Touch Handling State
     const lastTouchRef = useRef<{ x: number; y: number; dist: number } | null>(null);
 
     // Input Handlers
     const handleMouseDown = (e: React.MouseEvent) => {
-        setIsDragging(true);
+        const rect = canvasRef.current!.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+        const { width, height } = dimensions;
+        const centerX = width / 2;
+        const centerY = height / 2;
+
+        // Check for structure click
+        let clickedStructure: Structure | null = null;
+        // Iterate in reverse to catch top-most (though they are sorted in render, raw list is fine)
+        for (let i = structures.length - 1; i >= 0; i--) {
+            const s = structures[i];
+            if (!structureToggles[s.type]) continue;
+
+            const drawX = centerX + (s.x - viewport.x) * viewport.zoom;
+            const drawZ = centerY + (s.z - viewport.z) * viewport.zoom;
+            const size = Math.max(6, 12 * Math.min(1, viewport.zoom * 2)) * 1.5; // Hitbox slightly larger
+
+            const dx = clickX - drawX;
+            const dy = clickY - drawZ;
+            if (dx * dx + dy * dy <= size * size) {
+                clickedStructure = s;
+                break;
+            }
+        }
+
+        if (clickedStructure) {
+            setSelectedStructure(clickedStructure);
+            // Optionally preventing drag if clicking a structure? 
+            // Better to allow drag as well, but maybe set flag to ignore drag if we want pure selection.
+            // For now, allow drag to start but selection happens on down.
+        } else {
+            // Deselect if clicking empty space? Maybe?
+            // setSelectedStructure(null); // Uncomment to deselect on background click
+            setIsDragging(true);
+        }
     };
 
     const handleMouseMove = (e: React.MouseEvent) => {
@@ -372,25 +432,49 @@ export default function WorldMap({ seed, version, dimension, structureToggles }:
                 style={{ imageRendering: "pixelated" }}
             />
 
-            {/* Hover Info Panel - Bottom Left */}
-            <div className={`absolute bottom-4 left-4 p-2 md:p-3 bg-zinc-900/90 backdrop-blur-md rounded-lg border border-white/10 text-[10px] md:text-xs font-mono space-y-1 select-none transition-opacity duration-200 pointer-events-none ${showHoverInfo ? "opacity-100" : "opacity-0"
+            {/* Hover/Selection Info Panel - Bottom Left */}
+            <div className={`absolute bottom-4 left-4 p-3 bg-zinc-900/95 backdrop-blur-xl rounded-xl border border-white/10 text-[10px] md:text-xs font-mono space-y-1.5 shadow-xl transition-all duration-200 pointer-events-none select-none ${showHoverInfo || selectedStructure ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
                 }`}>
-                <div className="flex items-center gap-2">
-                    <span className="text-indigo-400 font-bold">X:</span>
-                    <span className="text-zinc-100">{mousePos.x}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className="text-cyan-400 font-bold">Z:</span>
-                    <span className="text-zinc-100">{mousePos.z}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className="text-green-400 font-bold">Biome:</span>
-                    <span className="text-zinc-100">{currentBiome}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className="text-purple-400 font-bold">Dim:</span>
-                    <span className="text-zinc-100 capitalize">{dimension}</span>
-                </div>
+                {selectedStructure ? (
+                    <>
+                        <div className="flex items-center gap-2 border-b border-white/10 pb-1.5 mb-1.5">
+                            <span className="text-xl">{STRUCTURE_INFO[selectedStructure.type]?.icon}</span>
+                            <div>
+                                <div className="font-black text-indigo-400 uppercase tracking-wider">{STRUCTURE_INFO[selectedStructure.type]?.name}</div>
+                                <div className="text-[9px] text-zinc-500 font-bold uppercase">Selected Structure</div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-indigo-400 font-bold">X:</span>
+                                <span className="text-zinc-100 font-bold">{selectedStructure.x}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-cyan-400 font-bold">Z:</span>
+                                <span className="text-zinc-100 font-bold">{selectedStructure.z}</span>
+                            </div>
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        <div className="flex items-center gap-2">
+                            <span className="text-indigo-400 font-bold">X:</span>
+                            <span className="text-zinc-100">{mousePos.x}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-cyan-400 font-bold">Z:</span>
+                            <span className="text-zinc-100">{mousePos.z}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-green-400 font-bold">Biome:</span>
+                            <span className="text-zinc-100">{currentBiome}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-purple-400 font-bold">Dim:</span>
+                            <span className="text-zinc-100 capitalize">{dimension}</span>
+                        </div>
+                    </>
+                )}
             </div>
 
             {/* Control Bar - Bottom Center */}

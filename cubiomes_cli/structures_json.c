@@ -68,6 +68,13 @@ int main(int argc, char *argv[])
     printf("[");
     int first = 1;
 
+    // Output Spawn Point (only for Overworld usually, but getSpawn handles dimension check internally or returns 0,0)
+    if (dim == DIM_OVERWORLD) {
+        Pos spawn = getSpawn(&g);
+        printf("{\"type\":\"spawn\",\"x\":%d,\"z\":%d}", spawn.x, spawn.z);
+        first = 0;
+    }
+
     // List of structures to check
     int structures[32];
     int num_structures = 0;

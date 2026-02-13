@@ -216,15 +216,40 @@ export default function WorldMap({ seed, version, dimension, structureToggles }:
         return () => cancelAnimationFrame(animationFrameId);
     }, [viewport, tileCache, structures, structureToggles, dimensions, fetchTile]);
 
+    // Touch Handling State
+    const lastTouchRef = useRef<{ x: number; y: number; dist: number } | null>(null);
+
     // Input Handlers
     const handleMouseDown = (e: React.MouseEvent) => {
         setIsDragging(true);
     };
 
     const handleMouseMove = (e: React.MouseEvent) => {
+        updateHoverInfo(e.clientX, e.clientY);
+
+        if (isDragging) {
+            setViewport(v => ({
+                ...v,
+                x: v.x - e.movementX / v.zoom,
+                z: v.z - e.movementY / v.zoom
+            }));
+        }
+    };
+
+    const handleMouseUp = () => setIsDragging(false);
+
+    const handleMouseLeave = () => {
+        setIsDragging(false);
+        // Don't hide info immediately on mobile/touch, but for mouse it's fine
+        if (matchMedia('(pointer: fine)').matches) {
+            setShowHoverInfo(false);
+        }
+    };
+
+    const updateHoverInfo = (clientX: number, clientY: number) => {
         const rect = canvasRef.current!.getBoundingClientRect();
-        const localX = e.clientX - rect.left;
-        const localZ = e.clientY - rect.top;
+        const localX = clientX - rect.left;
+        const localZ = clientY - rect.top;
 
         // Convert to world coords
         const worldX = viewport.x + (localX - dimensions.width / 2) / viewport.zoom;
@@ -252,21 +277,68 @@ export default function WorldMap({ seed, version, dimension, structureToggles }:
         } else {
             setCurrentBiome("Loading...");
         }
+    }
 
-        if (isDragging) {
-            setViewport(v => ({
-                ...v,
-                x: v.x - e.movementX / v.zoom,
-                z: v.z - e.movementY / v.zoom
-            }));
+    const handleTouchStart = (e: React.TouchEvent) => {
+        if (e.touches.length === 1) {
+            const t = e.touches[0];
+            lastTouchRef.current = { x: t.clientX, y: t.clientY, dist: 0 };
+            updateHoverInfo(t.clientX, t.clientY); // Tap to inspect
+        } else if (e.touches.length === 2) {
+            const t1 = e.touches[0];
+            const t2 = e.touches[1];
+            const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+            lastTouchRef.current = { x: (t1.clientX + t2.clientX) / 2, y: (t1.clientY + t2.clientY) / 2, dist };
         }
     };
 
-    const handleMouseUp = () => setIsDragging(false);
+    const handleTouchMove = (e: React.TouchEvent) => {
+        // Prevent default only if we are interacting with the map to avoid scrolling page while panning
+        if (e.cancelable) e.preventDefault();
 
-    const handleMouseLeave = () => {
-        setIsDragging(false);
-        setShowHoverInfo(false);
+        if (!lastTouchRef.current) return;
+
+        if (e.touches.length === 1) {
+            // Pan
+            const t = e.touches[0];
+            const dx = t.clientX - lastTouchRef.current.x;
+            const dy = t.clientY - lastTouchRef.current.y;
+
+            setViewport(v => ({
+                ...v,
+                x: v.x - dx / v.zoom,
+                z: v.z - dy / v.zoom
+            }));
+
+            lastTouchRef.current = { x: t.clientX, y: t.clientY, dist: 0 };
+            updateHoverInfo(t.clientX, t.clientY);
+
+        } else if (e.touches.length === 2) {
+            // Pinch Zoom & Pan
+            const t1 = e.touches[0];
+            const t2 = e.touches[1];
+            const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+            const cx = (t1.clientX + t2.clientX) / 2;
+            const cy = (t1.clientY + t2.clientY) / 2;
+
+            const oldDist = lastTouchRef.current.dist;
+
+            if (oldDist > 0) {
+                const zoomFactor = dist / oldDist;
+                setViewport(v => ({
+                    ...v,
+                    zoom: Math.max(0.01, Math.min(2, v.zoom * zoomFactor)),
+                    x: v.x - (cx - lastTouchRef.current!.x) / v.zoom,
+                    z: v.z - (cy - lastTouchRef.current!.y) / v.zoom
+                }));
+            }
+
+            lastTouchRef.current = { x: cx, y: cy, dist };
+        }
+    };
+
+    const handleTouchEnd = () => {
+        lastTouchRef.current = null;
     };
 
     const handleWheel = (e: React.WheelEvent) => {
@@ -283,7 +355,7 @@ export default function WorldMap({ seed, version, dimension, structureToggles }:
     const resetView = () => setViewport({ x: 0, z: 0, zoom: 0.25 });
 
     return (
-        <div ref={containerRef} className="relative w-full aspect-video bg-black rounded-xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] group">
+        <div ref={containerRef} className="relative w-full h-full bg-black rounded-xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] group touch-none">
             <canvas
                 ref={canvasRef}
                 width={dimensions.width}
@@ -292,13 +364,16 @@ export default function WorldMap({ seed, version, dimension, structureToggles }:
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseLeave}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
                 onWheel={handleWheel}
-                className="w-full h-full cursor-grab active:cursor-grabbing"
+                className="w-full h-full cursor-grab active:cursor-grabbing outline-none"
                 style={{ imageRendering: "pixelated" }}
             />
 
             {/* Hover Info Panel - Bottom Left */}
-            <div className={`absolute bottom-4 left-4 p-3 bg-zinc-900/90 backdrop-blur-md rounded-lg border border-white/10 text-xs font-mono space-y-1.5 select-none transition-opacity duration-200 ${showHoverInfo ? "opacity-100" : "opacity-0"
+            <div className={`absolute bottom-4 left-4 p-2 md:p-3 bg-zinc-900/90 backdrop-blur-md rounded-lg border border-white/10 text-[10px] md:text-xs font-mono space-y-1 select-none transition-opacity duration-200 pointer-events-none ${showHoverInfo ? "opacity-100" : "opacity-0"
                 }`}>
                 <div className="flex items-center gap-2">
                     <span className="text-indigo-400 font-bold">X:</span>
@@ -319,24 +394,24 @@ export default function WorldMap({ seed, version, dimension, structureToggles }:
             </div>
 
             {/* Control Bar - Bottom Center */}
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 p-2 bg-zinc-900/90 backdrop-blur-xl rounded-full border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 p-1.5 md:p-2 bg-zinc-900/90 backdrop-blur-xl rounded-full border border-white/10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
                 <button
                     onClick={() => setViewport(v => ({ ...v, zoom: Math.min(2, v.zoom * 1.5) }))}
-                    className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-zinc-800 transition-colors"
+                    className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full hover:bg-zinc-800 transition-colors"
                 >
                     ➕
                 </button>
-                <div className="w-px h-6 bg-white/10 mx-1"></div>
+                <div className="w-px h-5 md:h-6 bg-white/10 mx-1"></div>
                 <button
                     onClick={resetView}
-                    className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-white transition-colors"
+                    className="px-3 md:px-4 py-1.5 md:py-2 text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-white transition-colors"
                 >
-                    Reset View
+                    Reset
                 </button>
-                <div className="w-px h-6 bg-white/10 mx-1"></div>
+                <div className="w-px h-5 md:h-6 bg-white/10 mx-1"></div>
                 <button
                     onClick={() => setViewport(v => ({ ...v, zoom: Math.max(0.01, v.zoom / 1.5) }))}
-                    className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-zinc-800 transition-colors"
+                    className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full hover:bg-zinc-800 transition-colors"
                 >
                     ➖
                 </button>

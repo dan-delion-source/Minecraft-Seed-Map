@@ -40,6 +40,7 @@ export default function WorldMap({ seed, version, dimension, structureToggles }:
 
     // State
     const [viewport, setViewport] = useState<Viewport>({ x: 0, z: 0, zoom: 0.25 });
+    const viewRef = useRef(viewport); // Track previous viewport to distinguish movement vs selection
     const [tileCache] = useState<Map<string, Tile>>(new Map());
     const [structures, setStructures] = useState<Structure[]>([]);
 
@@ -50,14 +51,53 @@ export default function WorldMap({ seed, version, dimension, structureToggles }:
     const [dimensions, setDimensions] = useState({ width: 800, height: 450 });
 
     const [selectedStructure, setSelectedStructure] = useState<Structure | null>(null);
+    const [popoverPos, setPopoverPos] = useState({ x: 0, y: 0 });
+    const [completedStructures, setCompletedStructures] = useState<Record<string, boolean>>({});
+
+    // Load completed structures from localStorage
+    useEffect(() => {
+        const saved = localStorage.getItem("minecraft_completed_structures");
+        if (saved) {
+            try {
+                setCompletedStructures(JSON.parse(saved));
+            } catch (e) {
+                console.error("Failed to parse completed structures", e);
+            }
+        }
+    }, []);
+
+    const toggleCompleted = (s: Structure) => {
+        const key = `${s.type}_${s.x}_${s.z}`;
+        const next = { ...completedStructures, [key]: !completedStructures[key] };
+        setCompletedStructures(next);
+        localStorage.setItem("minecraft_completed_structures", JSON.stringify(next));
+    };
+
+    const isCompleted = (s: Structure) => {
+        return !!completedStructures[`${s.type}_${s.x}_${s.z}`];
+    };
+
+    const fetchStructures = useCallback(async () => {
+        try {
+            // Fetch structures for a large initial area (e.g., +/- 10000)
+            const res = await fetch(`/api/generate/structures?seed=${seed}&version=${version}&dimension=${dimension}&x=-10000&z=-10000&sx=20000&sz=20000`);
+            const data = await res.json();
+            if (data.structures) {
+                setStructures(data.structures);
+            }
+        } catch (e) {
+            console.error("Failed to fetch structures", e);
+        }
+    }, [seed, version, dimension]);
 
     // Reset cache on seed, version, or dimension change
     useEffect(() => {
         tileCache.clear();
         setStructures([]);
         setSelectedStructure(null);
+        setViewport({ x: 0, z: 0, zoom: 0.25 }); // Reset view to spawn/center
         fetchStructures();
-    }, [seed, version, dimension]);
+    }, [seed, version, dimension, fetchStructures, tileCache]);
 
     // Handle resize with ResizeObserver
     useEffect(() => {
@@ -73,19 +113,6 @@ export default function WorldMap({ seed, version, dimension, structureToggles }:
         observer.observe(containerRef.current);
         return () => observer.disconnect();
     }, []);
-
-    const fetchStructures = useCallback(async () => {
-        try {
-            // Fetch structures for a large initial area (e.g., +/- 10000)
-            const res = await fetch(`/api/generate/structures?seed=${seed}&version=${version}&dimension=${dimension}&x=-10000&z=-10000&sx=20000&sz=20000`);
-            const data = await res.json();
-            if (data.structures) {
-                setStructures(data.structures);
-            }
-        } catch (e) {
-            console.error("Failed to fetch structures", e);
-        }
-    }, [seed, version, dimension]);
 
     const fetchTile = useCallback(async (tx: number, tz: number) => {
         const key = `${tx},${tz}`;
@@ -188,6 +215,7 @@ export default function WorldMap({ seed, version, dimension, structureToggles }:
                 return 0;
             });
 
+            const visibleThreshold = 100 / viewport.zoom;
             structuresToDraw.forEach(s => {
                 if (!structureToggles[s.type]) return;
 
@@ -195,7 +223,7 @@ export default function WorldMap({ seed, version, dimension, structureToggles }:
                 if (!info) return;
 
                 // Clip to viewport (loosely)
-                if (s.x < visibleLeft - 100 || s.x > visibleRight + 100 || s.z < visibleTop - 100 || s.z > visibleBottom + 100) return;
+                if (s.x < visibleLeft - visibleThreshold || s.x > visibleRight + visibleThreshold || s.z < visibleTop - visibleThreshold || s.z > visibleBottom + visibleThreshold) return;
 
                 const drawX = centerX + (s.x - viewport.x) * viewport.zoom;
                 const drawZ = centerY + (s.z - viewport.z) * viewport.zoom;
@@ -241,6 +269,15 @@ export default function WorldMap({ seed, version, dimension, structureToggles }:
         return () => cancelAnimationFrame(animationFrameId);
     }, [viewport, tileCache, structures, structureToggles, dimensions, fetchTile, selectedStructure]);
 
+    // Auto-deselect structure 1s after interaction (pan/zoom)
+    useEffect(() => {
+        // Only trigger if we have a selection AND the viewport has changed (user moved map)
+        if (selectedStructure && viewRef.current !== viewport) {
+            // No longer auto-deselecting on movement to keep popover visible while zooming/panning
+        }
+        viewRef.current = viewport;
+    }, [viewport, selectedStructure]);
+
     // Touch Handling State
     const lastTouchRef = useRef<{ x: number; y: number; dist: number } | null>(null);
 
@@ -274,12 +311,14 @@ export default function WorldMap({ seed, version, dimension, structureToggles }:
 
         if (clickedStructure) {
             setSelectedStructure(clickedStructure);
-            // Optionally preventing drag if clicking a structure? 
-            // Better to allow drag as well, but maybe set flag to ignore drag if we want pure selection.
-            // For now, allow drag to start but selection happens on down.
+
+            // Calculate popover position
+            const drawX = centerX + (clickedStructure.x - viewport.x) * viewport.zoom;
+            const drawZ = centerY + (clickedStructure.z - viewport.z) * viewport.zoom;
+            setPopoverPos({ x: drawX, y: drawZ });
+
         } else {
-            // Deselect if clicking empty space? Maybe?
-            // setSelectedStructure(null); // Uncomment to deselect on background click
+            setSelectedStructure(null);
             setIsDragging(true);
         }
     };
@@ -301,13 +340,14 @@ export default function WorldMap({ seed, version, dimension, structureToggles }:
     const handleMouseLeave = () => {
         setIsDragging(false);
         // Don't hide info immediately on mobile/touch, but for mouse it's fine
-        if (matchMedia('(pointer: fine)').matches) {
+        if (typeof window !== 'undefined' && window.matchMedia('(pointer: fine)').matches) {
             setShowHoverInfo(false);
         }
     };
 
     const updateHoverInfo = (clientX: number, clientY: number) => {
-        const rect = canvasRef.current!.getBoundingClientRect();
+        if (!canvasRef.current) return;
+        const rect = canvasRef.current.getBoundingClientRect();
         const localX = clientX - rect.left;
         const localZ = clientY - rect.top;
 
@@ -385,11 +425,13 @@ export default function WorldMap({ seed, version, dimension, structureToggles }:
 
             if (oldDist > 0) {
                 const zoomFactor = dist / oldDist;
+                const nextZoom = Math.max(0.01, Math.min(2, viewport.zoom * zoomFactor));
+
                 setViewport(v => ({
                     ...v,
-                    zoom: Math.max(0.01, Math.min(2, v.zoom * zoomFactor)),
-                    x: v.x - (cx - lastTouchRef.current!.x) / v.zoom,
-                    z: v.z - (cy - lastTouchRef.current!.y) / v.zoom
+                    zoom: nextZoom,
+                    x: v.x - (cx - lastTouchRef.current!.x) / nextZoom,
+                    z: v.z - (cy - lastTouchRef.current!.y) / nextZoom
                 }));
             }
 
@@ -402,7 +444,6 @@ export default function WorldMap({ seed, version, dimension, structureToggles }:
     };
 
     const handleWheel = (e: React.WheelEvent) => {
-        const zoomSpeed = 0.001;
         const delta = -e.deltaY;
         const zoomFactor = Math.pow(1.1, delta / 100);
 
@@ -413,6 +454,10 @@ export default function WorldMap({ seed, version, dimension, structureToggles }:
     };
 
     const resetView = () => setViewport({ x: 0, z: 0, zoom: 0.25 });
+
+    const centerX = dimensions.width / 2;
+    const centerY = dimensions.height / 2;
+    const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
 
     return (
         <div ref={containerRef} className="relative w-full h-full bg-black rounded-xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] group touch-none">
@@ -432,70 +477,109 @@ export default function WorldMap({ seed, version, dimension, structureToggles }:
                 style={{ imageRendering: "pixelated" }}
             />
 
-            {/* Hover/Selection Info Panel - Bottom Left */}
-            <div className={`absolute bottom-4 left-4 p-3 bg-zinc-900/95 backdrop-blur-xl rounded-xl border border-white/10 text-[10px] md:text-xs font-mono space-y-1.5 shadow-xl transition-all duration-200 pointer-events-none select-none ${showHoverInfo || selectedStructure ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
-                }`}>
-                {selectedStructure ? (
-                    <>
-                        <div className="flex items-center gap-2 border-b border-white/10 pb-1.5 mb-1.5">
-                            <span className="text-xl">{STRUCTURE_INFO[selectedStructure.type]?.icon}</span>
-                            <div>
-                                <div className="font-black text-indigo-400 uppercase tracking-wider">{STRUCTURE_INFO[selectedStructure.type]?.name}</div>
-                                <div className="text-[9px] text-zinc-500 font-bold uppercase">Selected Structure</div>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-1.5">
-                                <span className="text-indigo-400 font-bold">X:</span>
-                                <span className="text-zinc-100 font-bold">{selectedStructure.x}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                                <span className="text-cyan-400 font-bold">Z:</span>
-                                <span className="text-zinc-100 font-bold">{selectedStructure.z}</span>
-                            </div>
-                        </div>
-                    </>
-                ) : (
-                    <>
-                        <div className="flex items-center gap-2">
-                            <span className="text-indigo-400 font-bold">X:</span>
-                            <span className="text-zinc-100">{mousePos.x}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <span className="text-cyan-400 font-bold">Z:</span>
-                            <span className="text-zinc-100">{mousePos.z}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <span className="text-green-400 font-bold">Biome:</span>
-                            <span className="text-zinc-100">{currentBiome}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <span className="text-purple-400 font-bold">Dim:</span>
-                            <span className="text-zinc-100 capitalize">{dimension}</span>
-                        </div>
-                    </>
-                )}
+            {/* Hover Info Panel - Bottom Left (Desktop) / Top Center (Mobile) */}
+            <div className={`absolute left-4 p-3 bg-zinc-900/95 backdrop-blur-xl rounded-xl border border-white/10 text-[10px] md:text-xs font-mono space-y-1 md:space-y-1.5 shadow-xl transition-all duration-200 pointer-events-none select-none z-20 
+                ${isMobile ? 'top-4' : 'bottom-4'} 
+                ${showHoverInfo ? "translate-y-0 opacity-100" : (isMobile ? "-translate-y-2 opacity-0" : "translate-y-2 opacity-0")}
+                `}>
+                <div className="flex items-center gap-2">
+                    <span className="text-indigo-400 font-bold">X:</span>
+                    <span className="text-zinc-100">{mousePos.x}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="text-cyan-400 font-bold">Z:</span>
+                    <span className="text-zinc-100">{mousePos.z}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="text-green-400 font-bold">Biome:</span>
+                    <span className="text-zinc-100">{currentBiome}</span>
+                </div>
             </div>
 
-            {/* Control Bar - Bottom Center */}
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 p-1.5 md:p-2 bg-zinc-900/90 backdrop-blur-xl rounded-full border border-white/10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
+            {/* Structure Popover */}
+            {selectedStructure && (
+                <div
+                    className="absolute z-30 -translate-x-1/2 -translate-y-[calc(100%+12px)] pointer-events-auto transition-transform duration-75"
+                    style={{
+                        left: `${centerX + (selectedStructure.x - viewport.x) * viewport.zoom}px`,
+                        top: `${centerY + (selectedStructure.z - viewport.z) * viewport.zoom}px`
+                    }}
+                >
+                    <div className="bg-white text-zinc-900 rounded-lg shadow-2xl p-3 min-w-[180px] border border-zinc-200 flex flex-col gap-2 relative ring-4 ring-black/5 animate-in fade-in zoom-in duration-200">
+                        {/* Little Triangle Pointer */}
+                        <div className="absolute bottom-[-6px] left-1/2 -translate-x-1/2 w-3 h-3 bg-white rotate-45 border-r border-b border-zinc-200"></div>
+
+                        <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                                <span className="text-2xl">{STRUCTURE_INFO[selectedStructure.type]?.icon}</span>
+                                <div className="font-black text-sm uppercase tracking-tight">
+                                    {STRUCTURE_INFO[selectedStructure.type]?.name}
+                                </div>
+                            </div>
+                            <div className="flex gap-1">
+                                <button
+                                    onClick={() => {
+                                        const url = `${window.location.origin}${window.location.pathname}?seed=${seed}&v=${version}&x=${selectedStructure.x}&z=${selectedStructure.z}`;
+                                        navigator.clipboard.writeText(url);
+                                    }}
+                                    className="p-1 hover:bg-zinc-100 rounded transition-colors text-indigo-600"
+                                    title="Copy Link"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-between border-t border-zinc-100 pt-2 text-[11px] font-bold font-mono">
+                            <div className="flex items-center gap-3">
+                                <span className="text-zinc-500">X: <span className="text-zinc-900">{selectedStructure.x.toLocaleString()}</span></span>
+                                <span className="text-zinc-500">Z: <span className="text-zinc-900">{selectedStructure.z.toLocaleString()}</span></span>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    navigator.clipboard.writeText(`${selectedStructure.x} ${selectedStructure.z}`);
+                                }}
+                                className="p-1 hover:bg-zinc-100 rounded transition-colors text-blue-600"
+                                title="Copy Coordinates"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+                            </button>
+                        </div>
+
+                        <label className="flex items-center gap-2 cursor-pointer select-none border-t border-zinc-100 pt-2 hover:opacity-80 transition-opacity">
+                            <input
+                                type="checkbox"
+                                checked={isCompleted(selectedStructure)}
+                                onChange={() => toggleCompleted(selectedStructure)}
+                                className="w-3.5 h-3.5 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                            <span className="text-[11px] font-bold text-zinc-600 uppercase tracking-wider">Completed</span>
+                        </label>
+                    </div>
+                </div>
+            )}
+
+            {/* Control Bar - Bottom Center (Desktop) / Bottom Right (Mobile) */}
+            <div className={`absolute flex items-center gap-1.5 p-1.5 bg-zinc-900/90 backdrop-blur-xl rounded-full border border-white/10 z-20 transition-all duration-300
+                ${isMobile ? 'bottom-4 right-4 translate-x-0' : 'bottom-6 left-1/2 -translate-x-1/2 md:group-hover:opacity-100 md:opacity-0'}
+            `}>
                 <button
                     onClick={() => setViewport(v => ({ ...v, zoom: Math.min(2, v.zoom * 1.5) }))}
-                    className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full hover:bg-zinc-800 transition-colors"
+                    className="w-8 h-8 md:w-9 md:h-9 flex items-center justify-center rounded-full hover:bg-zinc-800 transition-colors"
                 >
                     ➕
                 </button>
-                <div className="w-px h-5 md:h-6 bg-white/10 mx-1"></div>
+                <div className="w-px h-4 bg-white/10"></div>
                 <button
                     onClick={resetView}
-                    className="px-3 md:px-4 py-1.5 md:py-2 text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-white transition-colors"
+                    className="px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-zinc-400 hover:text-white transition-colors"
                 >
                     Reset
                 </button>
-                <div className="w-px h-5 md:h-6 bg-white/10 mx-1"></div>
+                <div className="w-px h-4 bg-white/10"></div>
                 <button
                     onClick={() => setViewport(v => ({ ...v, zoom: Math.max(0.01, v.zoom / 1.5) }))}
-                    className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full hover:bg-zinc-800 transition-colors"
+                    className="w-8 h-8 md:w-9 md:h-9 flex items-center justify-center rounded-full hover:bg-zinc-800 transition-colors"
                 >
                     ➖
                 </button>

@@ -12,10 +12,10 @@ export default function Home() {
     const [version, setVersion] = useState<string>("120");
     const [dimension, setDimension] = useState<string>("overworld");
     const [structureToggles, setStructureToggles] = useState<Record<string, boolean>>(() => {
-        // Initialize all structures to true by default, except some heavy ones maybe?
+        // Initialize with specific defaults: Biomes, Spawn, Village
         const initial: Record<string, boolean> = {};
         Object.keys(STRUCTURE_INFO).forEach(key => {
-            initial[key] = true;
+            initial[key] = ["biomes", "spawn", "village"].includes(key);
         });
         return initial;
     });

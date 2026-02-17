@@ -28,12 +28,12 @@ export const BIOME_COLORS: Record<number, { name: string, color: string }> = {
     25: { name: "Stony Shore", color: "#a2a284" },
     26: { name: "Snowy Beach", color: "#faf0c0" },
     27: { name: "Birch Forest", color: "#307444" },
-    28: { name: "Birch Forest Hills", color: "#1f5f32" },
+    28: { name: "Old Growth Birch Forest", color: "#589c6c" },
     29: { name: "Dark Forest", color: "#40511a" },
     30: { name: "Snowy Taiga", color: "#31554a" },
     31: { name: "Snowy Taiga Hills", color: "#243a34" },
     32: { name: "Old Growth Pine Taiga", color: "#596651" },
-    33: { name: "Old Growth Pine Taiga Hills", color: "#50543e" },
+    33: { name: "Old Growth Spruce Taiga", color: "#818e79" },
     34: { name: "Windswept Forest", color: "#507050" },
     35: { name: "Savanna", color: "#bdb25f" },
     36: { name: "Savanna Plateau", color: "#a79d64" },
@@ -51,6 +51,7 @@ export const BIOME_COLORS: Record<number, { name: string, color: string }> = {
     48: { name: "Deep Lukewarm Ocean", color: "#000040" },
     49: { name: "Deep Cold Ocean", color: "#20203a" },
     50: { name: "Deep Frozen Ocean", color: "#404090" },
+    155: { name: "Old Growth Birch Forest", color: "#589c6c" },
     168: { name: "Dripstone Caves", color: "#382210" },
     169: { name: "Lush Caves", color: "#3b4407" },
     170: { name: "Deep Dark", color: "#081010" },
@@ -60,6 +61,7 @@ export const BIOME_COLORS: Record<number, { name: string, color: string }> = {
     177: { name: "Jagged Peaks", color: "#f0f0f0" },
     178: { name: "Frozen Peaks", color: "#e0e0e0" },
     179: { name: "Stony Peaks", color: "#a0a0a0" },
+    192: { name: "Cherry Grove", color: "#eb91b5" },
 };
 
 export const STRUCTURE_INFO: Record<string, { name: string, icon: string, color: string, dimensions: string[] }> = {

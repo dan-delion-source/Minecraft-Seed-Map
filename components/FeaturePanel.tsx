@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { STRUCTURE_INFO } from "@/lib/biomes";
+import Image from "next/image";
 
 interface FeaturePanelProps {
     structureToggles: Record<string, boolean>;
@@ -60,9 +61,17 @@ export default function FeaturePanel({
                             `}
                             title={info.name}
                         >
-                            <span className="text-xl filter drop-shadow-md pb-0.5">
-                                {info.icon}
-                            </span>
+                            <div className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0 relative">
+                                <Image
+                                    src={info.icon}
+                                    alt={info.name}
+                                    width={24}
+                                    height={24}
+                                    className="w-full h-full object-contain drop-shadow-md"
+                                    style={{ imageRendering: "pixelated" }}
+                                    unoptimized
+                                />
+                            </div>
                             <span className={`
                                 text-[10px] sm:text-xs font-bold uppercase tracking-tight leading-none
                                 ${isActive ? "text-indigo-200" : "text-zinc-500 group-hover:text-zinc-300"}

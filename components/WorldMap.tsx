@@ -34,6 +34,17 @@ const TILE_SIZE_BLOCKS = 512;
 const BIOME_FETCH_SCALE = 4; // Fetch 1:4 biome data
 const TILE_RES = TILE_SIZE_BLOCKS / BIOME_FETCH_SCALE; // 128x128 pixels per tile
 
+// Pre-load all structure icons
+function preloadIcons(): Map<string, HTMLImageElement> {
+    const cache = new Map<string, HTMLImageElement>();
+    Object.entries(STRUCTURE_INFO).forEach(([key, info]) => {
+        const img = new Image();
+        img.src = info.icon;
+        cache.set(key, img);
+    });
+    return cache;
+}
+
 export default function WorldMap({ seed, version, dimension, structureToggles }: WorldMapProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -43,6 +54,7 @@ export default function WorldMap({ seed, version, dimension, structureToggles }:
     const viewRef = useRef(viewport); // Track previous viewport to distinguish movement vs selection
     const [tileCache] = useState<Map<string, Tile>>(new Map());
     const [structures, setStructures] = useState<Structure[]>([]);
+    const iconImages = useRef<Map<string, HTMLImageElement>>(preloadIcons());
 
     const [mousePos, setMousePos] = useState({ x: 0, z: 0 });
     const [currentBiome, setCurrentBiome] = useState<string>("Unknown");
@@ -252,13 +264,14 @@ export default function WorldMap({ seed, version, dimension, structureToggles }:
                 ctx.lineWidth = 1.5;
                 ctx.stroke();
 
-                // Icon text (only if zoomed in enough or selected)
+                // Draw icon image (only if zoomed in enough or selected)
                 if (viewport.zoom > 0.05 || isSelected) {
-                    ctx.font = `${size}px sans-serif`;
-                    ctx.textAlign = "center";
-                    ctx.textBaseline = "middle";
-                    ctx.fillStyle = "white";
-                    ctx.fillText(info.icon, drawX, drawZ);
+                    const iconImg = iconImages.current.get(s.type);
+                    if (iconImg && iconImg.complete && iconImg.naturalWidth > 0) {
+                        const iconSize = size * 1.4;
+                        ctx.imageSmoothingEnabled = false;
+                        ctx.drawImage(iconImg, drawX - iconSize / 2, drawZ - iconSize / 2, iconSize, iconSize);
+                    }
                 }
             });
 
@@ -511,7 +524,7 @@ export default function WorldMap({ seed, version, dimension, structureToggles }:
 
                         <div className="flex items-center justify-between gap-3">
                             <div className="flex items-center gap-2">
-                                <span className="text-2xl">{STRUCTURE_INFO[selectedStructure.type]?.icon}</span>
+                                <img src={STRUCTURE_INFO[selectedStructure.type]?.icon} alt={STRUCTURE_INFO[selectedStructure.type]?.name} className="w-7 h-7 object-contain" style={{ imageRendering: 'pixelated' }} />
                                 <div className="font-black text-sm uppercase tracking-tight">
                                     {STRUCTURE_INFO[selectedStructure.type]?.name}
                                 </div>

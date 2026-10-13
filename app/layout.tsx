@@ -1,13 +1,11 @@
 
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
     title: "Minecraft Seed Explorer",
-    description: "Explore Minecraft seeds with deepslate",
+    description: "Explore Minecraft Java seeds, biomes, and structures with Cubiomes",
 };
 
 export default function RootLayout({
@@ -17,7 +15,7 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="en">
-            <body className={inter.className}>{children}</body>
+            <body >{children}</body>
         </html>
     );
 }

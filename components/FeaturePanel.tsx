@@ -1,105 +1,15 @@
 "use client";
-
 import { useState } from "react";
-import { STRUCTURE_INFO } from "@/lib/biomes";
-import Image from "next/image";
+import { STRUCTURE_INFO, SUPPORTED_FEATURES } from "@/lib/biomes";
 
-interface FeaturePanelProps {
-    structureToggles: Record<string, boolean>;
-    toggleStructure: (id: string) => void;
-    onSelectAll: () => void;
-    onDeselectAll: () => void;
-    dimension: string;
-}
-
-export default function FeaturePanel({
-    structureToggles,
-    toggleStructure,
-    onSelectAll,
-    onDeselectAll,
-    dimension
-}: FeaturePanelProps) {
-    const [isExpanded, setIsExpanded] = useState(false);
-
-    // Filter structures based on the current dimension
-    const availableStructures = Object.entries(STRUCTURE_INFO).filter(([_, info]) =>
-        info.dimensions.includes(dimension)
-    );
-
-    const visibleStructures = isExpanded ? availableStructures : availableStructures.slice(0, 8);
-
-    return (
-        <div className="w-full flex flex-col gap-3 bg-zinc-900/50 rounded-xl border border-white/10 p-4 transition-all duration-300">
-            {/* Header */}
-            <div className="flex items-center justify-between shrink-0">
-                <h3 className="text-xs font-black text-zinc-400 uppercase tracking-wider">
-                    Features ({availableStructures.length})
-                </h3>
-                <button
-                    onClick={() => setIsExpanded(!isExpanded)}
-                    className="text-[10px] font-bold uppercase text-indigo-400 hover:text-indigo-300 transition-colors"
-                >
-                    {isExpanded ? "Show Less" : "Show More"}
-                </button>
-            </div>
-
-            {/* Grid Container */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
-                {visibleStructures.map(([id, info]) => {
-                    const isActive = structureToggles[id];
-                    return (
-                        <button
-                            key={id}
-                            onClick={() => toggleStructure(id)}
-                            className={`
-                                group flex items-center gap-3 px-3 py-2 rounded-lg border transition-all duration-200
-                                hover:scale-[1.02] active:scale-95 text-left
-                                ${isActive
-                                    ? "bg-indigo-600/20 border-indigo-500/50 shadow-[0_0_15px_rgba(79,70,229,0.15)]"
-                                    : "bg-zinc-800/40 border-white/5 hover:bg-zinc-800/80 hover:border-white/10"
-                                }
-                            `}
-                            title={info.name}
-                        >
-                            <div className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0 relative">
-                                <Image
-                                    src={info.icon}
-                                    alt={info.name}
-                                    width={24}
-                                    height={24}
-                                    className="w-full h-full object-contain drop-shadow-md"
-                                    style={{ imageRendering: "pixelated" }}
-                                    unoptimized
-                                />
-                            </div>
-                            <span className={`
-                                text-[10px] sm:text-xs font-bold uppercase tracking-tight leading-none
-                                ${isActive ? "text-indigo-200" : "text-zinc-500 group-hover:text-zinc-300"}
-                            `}>
-                                {info.name}
-                            </span>
-                        </button>
-                    );
-                })}
-            </div>
-
-            {/* Footer Actions - Only show when expanded to reduce clutter */}
-            {isExpanded && (
-                <div className="flex gap-2 pt-2 border-t border-white/5 shrink-0 animate-in fade-in slide-in-from-top-2 duration-200">
-                    <button
-                        onClick={onSelectAll}
-                        className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white text-[10px] font-bold uppercase py-1.5 rounded-lg transition-colors"
-                    >
-                        Select All
-                    </button>
-                    <button
-                        onClick={onDeselectAll}
-                        className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white text-[10px] font-bold uppercase py-1.5 rounded-lg transition-colors"
-                    >
-                        Deselect All
-                    </button>
-                </div>
-            )}
-        </div>
-    );
+export default function FeaturePanel({ structureToggles, toggleStructure, onSelectAll, onDeselectAll, dimension }: {
+    structureToggles: Record<string, boolean>; toggleStructure: (id: string) => void; onSelectAll: () => void; onDeselectAll: () => void; dimension: string;
+}) {
+    const [expanded, setExpanded] = useState(false);
+    const available = Object.entries(STRUCTURE_INFO).filter(([id, info]) => SUPPORTED_FEATURES.has(id) && info.dimensions.includes(dimension));
+    const active = available.filter(([id]) => structureToggles[id]).length;
+    return <section className="feature-panel" aria-label="Map layers">
+        <div className="panel-heading"><div><h2>Map layers</h2><span>{active} active</span></div><div className="layer-actions"><button onClick={onSelectAll}>All</button><button onClick={onDeselectAll}>None</button>{available.length > 8 && <button aria-expanded={expanded} aria-controls="layer-list" onClick={() => setExpanded(v => !v)}>{expanded ? "Show less" : `More layers (${available.length - 8})`}</button>}</div></div>
+        <div className="layer-list" id="layer-list">{(expanded ? available : available.slice(0, 8)).map(([id, info]) => <button key={id} className="layer-toggle" aria-pressed={!!structureToggles[id]} onClick={() => toggleStructure(id)}><span className="layer-icon-slot" aria-hidden="true"><img src={info.icon} width="32" height="32" alt="" /></span><span>{info.name}</span><span className="layer-check" aria-hidden="true">{structureToggles[id] ? "✓" : ""}</span></button>)}</div>
+    </section>;
 }

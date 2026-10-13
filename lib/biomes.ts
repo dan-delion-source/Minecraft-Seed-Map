@@ -103,36 +103,36 @@ export const BIOME_COLORS: Record<number, { name: string, color: string }> = {
 
 export const STRUCTURE_INFO: Record<string, { name: string, icon: string, color: string, dimensions: string[] }> = {
     "biomes": { name: "Biomes", icon: "/icons/biome.png", color: "#8db360", dimensions: ["overworld", "nether", "end"] },
-    "spawn": { name: "Spawn Point", icon: "/icons/spawn.png", color: "#ef4444", dimensions: ["overworld"] },
+    "spawn": { name: "Spawn Point", icon: "/icons/minecraft/spawn.png", color: "#ef4444", dimensions: ["overworld"] },
     "slime": { name: "Slime Chunk", icon: "/icons/slime.png", color: "#84cc16", dimensions: ["overworld"] },
-    "village": { name: "Village", icon: "/icons/village.png", color: "#facc15", dimensions: ["overworld"] },
-    "ancient_city": { name: "Ancient City", icon: "/icons/ancient_city.png", color: "#0f172a", dimensions: ["overworld"] },
+    "village": { name: "Village", icon: "/icons/minecraft/village.png", color: "#facc15", dimensions: ["overworld"] },
+    "ancient_city": { name: "Ancient City", icon: "/icons/minecraft/ancient_city.png", color: "#0f172a", dimensions: ["overworld"] },
     "dungeon": { name: "Dungeon", icon: "/icons/dungeon.png", color: "#71717a", dimensions: ["overworld"] },
     "stronghold": { name: "Stronghold", icon: "/icons/stronghold.png", color: "#a855f7", dimensions: ["overworld"] },
     "mansion": { name: "Mansion", icon: "/icons/mansion.png", color: "#78350f", dimensions: ["overworld"] },
     "monument": { name: "Monument", icon: "/icons/monument.png", color: "#22d3ee", dimensions: ["overworld"] },
-    "outpost": { name: "Outpost", icon: "/icons/outpost.png", color: "#b91c1c", dimensions: ["overworld"] },
+    "outpost": { name: "Outpost", icon: "/icons/minecraft/outpost.png", color: "#b91c1c", dimensions: ["overworld"] },
     "mineshaft": { name: "Mineshaft", icon: "/icons/mineshaft.png", color: "#fbbf24", dimensions: ["overworld"] },
     "ruined_portal": { name: "Ruined Portal", icon: "/icons/ruined_portal.png", color: "#c026d3", dimensions: ["overworld", "nether"] },
-    "jungle_temple": { name: "Jungle Temple", icon: "/icons/jungle_temple.png", color: "#4ade80", dimensions: ["overworld"] },
+    "jungle_temple": { name: "Jungle Temple", icon: "/icons/minecraft/jungle_temple.png", color: "#4ade80", dimensions: ["overworld"] },
     "desert_temple": { name: "Desert Temple", icon: "/icons/desert_temple.png", color: "#fb923c", dimensions: ["overworld"] },
     "witch_hut": { name: "Witch Hut", icon: "/icons/witch_hut.png", color: "#2dd4bf", dimensions: ["overworld"] },
-    "treasure": { name: "Treasure", icon: "/icons/treasure.png", color: "#38bdf8", dimensions: ["overworld"] },
-    "shipwreck": { name: "Shipwreck", icon: "/icons/shipwreck.png", color: "#94a3b8", dimensions: ["overworld"] },
+    "treasure": { name: "Treasure", icon: "/icons/minecraft/treasure.png", color: "#38bdf8", dimensions: ["overworld"] },
+    "shipwreck": { name: "Shipwreck", icon: "/icons/minecraft/shipwreck.png", color: "#94a3b8", dimensions: ["overworld"] },
     "igloo": { name: "Igloo", icon: "/icons/igloo.png", color: "#e2e8f0", dimensions: ["overworld"] },
     "ocean_ruin": { name: "Ocean Ruins", icon: "/icons/ocean_ruin.png", color: "#38bdf8", dimensions: ["overworld"] },
-    "fossil": { name: "Fossil", icon: "/icons/fossil.png", color: "#d4d4d8", dimensions: ["overworld", "nether"] },
+    "fossil": { name: "Fossil", icon: "/icons/minecraft/fossil.png", color: "#d4d4d8", dimensions: ["overworld", "nether"] },
     "cave": { name: "Cave", icon: "/icons/cave.png", color: "#18181b", dimensions: ["overworld"] },
     "ravine": { name: "Ravine", icon: "/icons/ravine.png", color: "#52525b", dimensions: ["overworld"] },
     "lava_pool": { name: "Lava Pool", icon: "/icons/lava_pool.png", color: "#f97316", dimensions: ["overworld"] },
     "geode": { name: "Geode", icon: "/icons/geode.png", color: "#a855f7", dimensions: ["overworld"] },
     "apple": { name: "Apple", icon: "/icons/apple.png", color: "#ef4444", dimensions: ["overworld"] },
     "ore_veins": { name: "Ore Veins", icon: "/icons/ore_veins.png", color: "#64748b", dimensions: ["overworld"] },
-    "desert_well": { name: "Desert Well", icon: "/icons/desert_well.png", color: "#fed7aa", dimensions: ["overworld"] },
-    "trail_ruins": { name: "Trail Ruins", icon: "/icons/trail_ruins.png", color: "#a16207", dimensions: ["overworld"] },
-    "fortress": { name: "Nether Fortress", icon: "/icons/fortress.png", color: "#b91c1c", dimensions: ["nether"] },
-    "bastion": { name: "Bastion", icon: "/icons/bastion.png", color: "#1e293b", dimensions: ["nether"] },
-    "end_city": { name: "End City", icon: "/icons/end_city.png", color: "#d946ef", dimensions: ["end"] },
+    "desert_well": { name: "Desert Well", icon: "/icons/minecraft/desert_well.png", color: "#fed7aa", dimensions: ["overworld"] },
+    "trail_ruins": { name: "Trail Ruins", icon: "/icons/minecraft/trail_ruins.png", color: "#a16207", dimensions: ["overworld"] },
+    "fortress": { name: "Nether Fortress", icon: "/icons/minecraft/fortress.png", color: "#b91c1c", dimensions: ["nether"] },
+    "bastion": { name: "Bastion", icon: "/icons/minecraft/bastion.png", color: "#1e293b", dimensions: ["nether"] },
+    "end_city": { name: "End City", icon: "/icons/minecraft/end_city.png", color: "#d946ef", dimensions: ["end"] },
 };
 
 export function getBiomeColor(id: number): string {
@@ -151,3 +151,6 @@ export function hexToRgb(hex: string): [number, number, number] {
         parseInt(result[3], 16)
     ] : [0, 0, 0];
 }
+
+// Features actually emitted by the native generator (plus the biome layer).
+export const SUPPORTED_FEATURES = new Set(["biomes", "spawn", "village", "ancient_city", "mansion", "monument", "outpost", "ruined_portal", "jungle_temple", "desert_temple", "witch_hut", "treasure", "shipwreck", "igloo", "ocean_ruin", "trail_ruins", "fortress", "bastion", "end_city"]);

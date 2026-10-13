@@ -7,7 +7,9 @@
     "dev": "next dev",
     "build": "cd lib/cubiomes && make && cd ../../cubiomes_cli && make && cd .. && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test:smoke": "node --test scripts/smoke-test.mjs"
   },
   "keywords": [],
   "author": "",

@@ -8,9 +8,9 @@
 
 const char* get_structure_name(int type) {
     switch(type) {
-        case Desert_Pyramid: return "desert_pyramid";
+        case Desert_Pyramid: return "desert_temple";
         case Jungle_Temple: return "jungle_temple";
-        case Swamp_Hut: return "swamp_hut";
+        case Swamp_Hut: return "witch_hut";
         case Igloo: return "igloo";
         case Village: return "village";
         case Ocean_Ruin: return "ocean_ruin";

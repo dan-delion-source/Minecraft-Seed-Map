@@ -1,6 +1,6 @@
 # Cubiomes Explorer 🌍
 
-[![Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![C](https://img.shields.io/badge/C-00599C?style=for-the-badge&logo=c&logoColor=white)](https://en.wikipedia.org/wiki/C_(programming_language))
 
@@ -12,9 +12,9 @@ A high-precision Minecraft map engine and seed explorer built with **Next.js**, 
 
 - **🌐 Multi-Dimensional Support**: Explore the Overworld, Nether, and End with a single click.
 - **🗺️ Interactive Map**: Smooth pan and zoom powered by a tiled Canvas 2D engine.
-- **💎 Structure Finders**: Real-time structure detection (Villages, Strongholds, Bastions, End Cities, etc.).
+- **💎 Structure Finders**: Real-time structure detection (Villages, Temples, Bastions, End Cities, etc.).
 - **⚡ High Performance**: Core biome generation logic written in C and interfaced via a lightweight CLI.
-- **🎨 Premium UI**: Modern, dark-themed interface with glassmorphism and subtle animations.
+- **🎨 Premium UI**: Responsive dark interface with keyboard navigation, accessible layer controls, and loading/error feedback.
 - **🕹️ Version Awareness**: Supports Minecraft versions 1.18, 1.19, 1.20, and 1.21.
 
 ---
@@ -23,7 +23,7 @@ A high-precision Minecraft map engine and seed explorer built with **Next.js**, 
 
 ### Prerequisites
 
-- **Node.js**: (v18 or higher)
+- **Node.js**: (v20.9 or higher)
 - **C Compiler**: (`gcc` or `clang` for building Cubiomes CLI)
 - **Make**: For building the CLI tools.
 
@@ -42,9 +42,8 @@ A high-precision Minecraft map engine and seed explorer built with **Next.js**, 
 
 3. **Build the Cubiomes CLI**:
    ```bash
-   cd cubiomes_cli
-   make
-   cd ..
+   make -C lib/cubiomes
+   make -C cubiomes_cli
    ```
 
 4. **Run the development server**:
@@ -88,3 +87,33 @@ This project is open-source and available under the MIT License.
 ---
 
 *Built with ❤️ for the Minecraft Community.*
+
+
+## Validation
+
+```bash
+npm run build
+npm run lint
+npm run typecheck
+# With the app running on port 3000 in another terminal:
+npm run test:smoke
+```
+
+Set `TEST_BASE_URL` to test a different local port. Smoke tests cover invalid input,
+deterministic biome results, cache headers, and all three dimensions.
+
+## Map behavior and performance
+
+- Canvas redraws are scheduled only when map content or the view changes.
+- Biome requests use four concurrent workers, cancel stale requests, and retain up
+  to 512 tiles. Sampling adjusts from 1:4 to 1:16 to 1:64 when zooming out.
+- Structures load for the visible region after a 250 ms pause in navigation.
+  Zoom in when the visible region exceeds the generator's area limit.
+- Successful generation responses are browser-cacheable for one day. Native
+  processes have a 20-second timeout and abort when their request is cancelled.
+- Only implemented structure layers are offered. This is a Java Edition map;
+  it does not calculate Bedrock worlds.
+- Explored markers are stored locally per seed, version, and dimension. Shared
+  marker links restore those world settings and coordinates.
+- Focus the map and use arrow keys to pan, + / − to zoom, Home to return to the
+  origin, and Escape to close marker details. Touch supports dragging and pinching.
